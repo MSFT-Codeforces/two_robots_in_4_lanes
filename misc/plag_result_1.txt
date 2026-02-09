@@ -1,0 +1,24 @@
+- TopCoder (SRM 792) — **TwoRobots** ([topcoder.com](https://www.topcoder.com/blog/single-round-match-792-editorials))  
+```text
+https://community.topcoder.com/stat?c=problem_statement&pm=16537&rd=18340
+```
+
+- HackerRank — **Two Robots** ([hackerrank.com](https://www.hackerrank.com/challenges/two-robots/problem?utm_source=openai))  
+```text
+https://www.hackerrank.com/challenges/two-robots/problem
+```
+
+- LeetCode 1320 — **Minimum Distance to Type a Word Using Two Fingers** ([flykiller.github.io](https://flykiller.github.io/leetcode/1320?utm_source=openai))  
+```text
+https://leetcode.com/problems/minimum-distance-to-type-a-word-using-two-fingers/
+```
+
+- LeetCode 1463 — **Cherry Pickup II** ([neetcode.io](https://neetcode.io/solutions/cherry-pickup-ii))  
+```text
+https://leetcode.com/problems/cherry-pickup-ii/
+```
+
+- GeeksforGeeks — **Chocolates Pickup** ([geeksforgeeks.org](https://www.geeksforgeeks.org/problems/chocolates-pickup/1?utm_source=openai))  
+```text
+https://www.geeksforgeeks.org/problems/chocolates-pickup/1
+```

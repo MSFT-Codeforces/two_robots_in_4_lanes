@@ -1,0 +1,105 @@
+### Corrections / factual review
+
+One point in the earlier reasoning was misleading:
+
+- **“Do-nothing gaps (`....`) allow repositioning to reduce future costs”**  
+  With this cost function (sum of absolute moves per robot), inserting unconstrained tiers does **not** make moving cheaper. For any robot, minimizing \(|x-y|+|y-z|\) over an intermediate \(y\) equals \(|x-z|\) (triangle inequality), so extra unconstrained tiers cannot reduce the minimal movement cost between two constrained tiers; they only add extra decision points that can match (but not beat) the direct cost.  
+  So “planning repositioning during gaps to reduce cost” is not accurate—though **empty tiers are still useful** to test correct handling of “no constraints” and the bottom-to-top processing order.
+
+A second (minor) overstatement:
+
+- **“Letting both robots stand on the single `#` can be beneficial”**  
+  It’s definitely *allowed*, but it’s not generally something that improves the optimum; often it’s weakly dominated by keeping the other robot where it already is (saving movement and preserving flexibility). The real bug to target for \(|S|=1\) is misreading it as “both must stand there” or “exactly one must stand there”.
+
+Everything else in the reasoning is consistent with the problem statement.
+
+---
+
+## Updated reasoning for comprehensive test coverage
+
+### 1) Input range boundaries (minimum/maximum)
+
+- **Smallest legal case:** `t=1, n=1`. Include each tier type:
+  - `....` (no constraint)
+  - exactly one `#` in each of the 4 columns (\(|S|=1\))
+  - exactly two `#` for every pair of columns (\(|S|=2\), including far pair (1,4))
+  - any tier with 3 or 4 `#` (must force output `-1`)
+- **Largest scale:** ensure performance at limits:
+  - one test with `n=2e5` (single-case stress)
+  - many tests with small `n` summing to `2e5` (stresses per-test initialization/reset and I/O)
+- These boundary cases catch incorrect initialization, not resetting DP between test cases, and wrong handling of the first processed tier from the fixed start positions \((A=1,B=4)\).
+
+---
+
+### 2) Structural edge cases (grid patterns)
+
+- **All tiers unconstrained (`....`)**  
+  Expected minimum energy is 0 (never move). Catches solutions that accidentally “force” matching lanes or add spurious costs.
+
+- **All tiers identical constrained pattern**
+  - Repeat a single-`#` tier (same column) and repeat a two-`#` tier (same pair).  
+  Validates steady-state DP and that costs accumulate correctly without drift.
+
+- **Order sensitivity (top-to-bottom input vs bottom-to-top processing)**
+  - Construct tiers where reversing the processing order changes the answer significantly.  
+  This is one of the highest-value edge cases because it’s a very common mistake.
+
+- **Symmetry / role handling**
+  - Use symmetric tier requirements (e.g., columns mirrored) to expose solutions that incorrectly assume robot labels don’t matter, or that silently swap robots without accounting for distinctness.
+
+- **Presence of unconstrained tiers (`....`) between constrained tiers**
+  - While they don’t reduce minimal movement cost, they still test:
+    - correct interpretation of \(|S|=0\) (“any positions allowed”)
+    - correct tier iteration (must still process all tiers in the right order)
+    - robustness against attempts to “optimize away” tiers incorrectly (especially if a solution also mishandles start/transition logic)
+
+---
+
+### 3) Stress conditions (worst-case patterns)
+
+- **Maximizing DP ambiguity:** long sequences of \(|S|=0\) and \(|S|=1\)  
+  Many states remain feasible, ensuring the solution truly runs in intended \(O(n \cdot 16)\) (or similar) and doesn’t degrade via hidden quadratic behavior.
+
+- **Frequent forced placements:** \(|S|=2\) on most tiers  
+  Alternating required pairs (adjacent vs far apart) creates large movement and forces the algorithm to choose the best assignment of robots to the two lanes each time.
+
+- **Late impossibility**
+  - Put a \(|S|\ge 3\) tier near the very end of processing (i.e., near the top of input).  
+  Catches solutions that incorrectly early-terminate, or that only validate feasibility locally and forget to propagate impossibility.
+
+---
+
+### 4) Common implementation mistakes to target
+
+- **Wrong processing direction** (top→bottom instead of bottom→top).  
+  Include cases where the optimal path depends strongly on doing bottom tiers first.
+
+- **Misinterpreting \(|S|=1\) constraint**
+  - Common wrong readings:
+    - “both robots must be on that lane”
+    - “exactly one robot must be on that lane”
+  - Build scenarios where forcing both onto the `#` lane increases the cost versus keeping the other robot where it is.
+
+- **Misinterpreting \(|S|=2\) constraint**
+  - Must occupy exactly those two lanes, in any assignment, and robots must be in different lanes.
+  - Catch bugs where solutions:
+    - allow one robot to stand elsewhere
+    - allow both robots on one of the two lanes
+    - treat the pair as ordered and miss the better assignment
+
+- **Incorrectly assuming robots cannot cross / enforcing \(A \le B\)**
+  - The statement does not forbid crossing. If a solution compresses states by ordering robots, it can become wrong.
+  - Include patterns where the best sequence requires effectively swapping sides over time (or where forbidding \(A>B\) inflates cost).
+
+- **Off-by-one on movement accounting**
+  - Ensure the initial move from \((1,4)\) to the first processed tier is counted.
+  - Ensure there is no “extra move” after the last tier.
+
+- **Bad INF / DP transitions**
+  - Even though true answers are small (max per step 6, so total \(\le 6n\)), incorrect INF addition can overflow or wrap in some languages if not careful. Stress with long `n` helps reveal this.
+
+---
+
+### 5) Invalid input
+
+- Not applicable: the problem guarantees valid strings of length 4 with only `.`/`#`, and \(n \ge 1\).

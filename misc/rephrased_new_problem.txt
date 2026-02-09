@@ -1,0 +1,258 @@
+## Problem: The Archivist’s Two Golems (Four Corridors)
+
+In a buried archive there are **4 parallel corridors** (numbered `1..4`). The archive has `n` **tiers** stacked vertically, and a nightly inspection is performed tier by tier.
+
+You control **two stone golems**:
+
+- Golem **A** (the “left” one)
+- Golem **B** (the “right” one)
+
+Each tier is represented by a string of length 4:
+
+- `'#'` = an artifact must be handled in that corridor on this tier
+- `'.'` = nothing to do there
+
+### Important twist: reading order vs processing order
+The `n` strings are given **from top tier to bottom tier**, but the inspection happens **from bottom tier to top tier** (the last input row is processed first).
+
+---
+
+## Rules per processed tier
+
+At each processed tier, each golem must stand in **exactly one** corridor (1 to 4). Between two consecutive processed tiers, a golem may move to a different corridor.
+
+If golem A moves from `A_old` to `A_new` and golem B from `B_old` to `B_new`, the **energy cost** is:
+
+\[
+|A_{new}-A_{old}| + |B_{new}-B_{old}|
+\]
+
+Let `S` be the set of corridors containing `'#'` in the currently processed tier:
+
+- If `|S| = 0`: no constraint (golems may stand anywhere).
+- If `|S| = 1`: **at least one** golem must stand on that corridor.
+- If `|S| = 2`: **both** artifacts must be handled simultaneously, so the two golems must occupy **exactly those two corridors** (either assignment).
+- If `|S| ≥ 3`: the tier is impossible to handle (only two golems) → answer is `-1`.
+
+Golems are distinct, and they may share a corridor unless `|S| = 2` (which forces two different corridors).
+
+---
+
+## Initial positions
+
+Before the bottom tier is processed:
+
+- Golem A starts in corridor `1`
+- Golem B starts in corridor `4`
+
+---
+
+## Task
+
+For each test case, compute the **minimum total energy** required to process all tiers, or `-1` if impossible.
+
+---
+
+# Input Format
+
+- First line: integer `t` — number of test cases
+- For each test case:
+  - One integer `n` — number of tiers
+  - `n` lines: each a string of length 4 containing only `'.'` and `'#'` (top → bottom)
+
+---
+
+# Output Format
+
+For each test case, output one integer: the minimum total energy, or `-1`.
+
+---
+
+# Constraints
+
+- `1 ≤ t ≤ 10^4`
+- `1 ≤ n ≤ 2⋅10^5`
+- Sum of `n` across all test cases ≤ `2⋅10^5`
+
+---
+
+# Sample Input
+```
+4
+1
+#...
+2
+.#..
+..#.
+2
+##..
+....
+3
+.#..
+###.
+..#.
+```
+
+# Sample Output
+```
+0
+3
+2
+-1
+```
+
+---
+
+# Editorial (DP over 16 states)
+
+There are only 4 corridors. A complete configuration of the two golems is:
+
+\[
+(A, B),\quad A \in \{1,2,3,4\},\ B \in \{1,2,3,4\}
+\]
+
+So there are `4 * 4 = 16` possible states — small enough for dynamic programming.
+
+## State encoding
+Use 0-based corridors `{0,1,2,3}`:
+
+- state `s = 4*A + B`
+- where `A, B` are 0-based corridor indices
+
+## Processing order
+Input is top→bottom, but we must process **bottom→top**, so iterate rows in reverse.
+
+## Allowed states per tier
+Convert a tier to a 4-bit mask `mask`:
+
+- bit `j` is 1 if corridor `j` has `'#'`
+
+Let `k = popcount(mask)`:
+
+- `k = 0`: all 16 states allowed
+- `k = 1`: allowed states are those where `A == c` OR `B == c`
+- `k = 2`: if corridors are `{a,b}`, allowed states are only `(a,b)` and `(b,a)`
+- `k >= 3`: impossible immediately
+
+## DP transition
+Let `dp[s]` = minimum energy to have processed all tiers so far and end in state `s`.
+
+Moving from `s=(A,B)` to `ns=(A',B')` costs:
+
+\[
+|A'-A| + |B'-B|
+\]
+
+For each tier:
+- compute the list of allowed next states `allowed`
+- update:
+\[
+dpNext[ns] = \min_{s}(dp[s] + cost(s,ns))
+\quad \text{for } ns \in allowed
+\]
+
+## Initialization and answer
+Initial state is `(A,B) = (1,4)` → 0-based `(0,3)`:
+
+- `dp[start] = 0`, others = INF
+
+After all tiers, answer is `min(dp)` (you may end anywhere), unless impossible → `-1`.
+
+## Complexity
+- 16 states, transitions at most `16 * 16 = 256` per tier
+- Total time: `O(256 * sum(n))`, easily fits
+- Memory: `O(16)`
+
+---
+
+# Reference Implementation (Python)
+
+```python
+import sys
+
+INF = 10**30
+
+def solve() -> None:
+    data = sys.stdin.buffer.read().split()
+    t = int(data[0])
+    idx = 1
+
+    # Precompute movement cost between all 16 states.
+    move = [[0] * 16 for _ in range(16)]
+    for s in range(16):
+        a1, b1 = divmod(s, 4)
+        for ns in range(16):
+            a2, b2 = divmod(ns, 4)
+            move[s][ns] = abs(a1 - a2) + abs(b1 - b2)
+
+    # Precompute allowed next states for each 4-bit mask.
+    allowed_by_mask = [None] * 16
+    for mask in range(16):
+        k = mask.bit_count()
+        if k == 0:
+            allowed_by_mask[mask] = list(range(16))
+        elif k == 1:
+            c = mask.bit_length() - 1  # index of only set bit
+            allowed = []
+            for s in range(16):
+                a, b = divmod(s, 4)
+                if a == c or b == c:
+                    allowed.append(s)
+            allowed_by_mask[mask] = allowed
+        elif k == 2:
+            low = mask & -mask
+            rest = mask ^ low
+            low2 = rest & -rest
+            a = low.bit_length() - 1
+            b = low2.bit_length() - 1
+            allowed_by_mask[mask] = [a * 4 + b, b * 4 + a]
+        else:
+            allowed_by_mask[mask] = None  # impossible
+
+    out = []
+
+    for _ in range(t):
+        n = int(data[idx]); idx += 1
+        rows = data[idx:idx + n]
+        idx += n
+
+        # dp over 16 states
+        dp = [INF] * 16
+        start_state = 0 * 4 + 3  # (corridor 1, corridor 4) in 0-based => (0,3)
+        dp[start_state] = 0
+
+        possible = True
+
+        # process bottom -> top
+        for row in reversed(rows):
+            # build mask of '#'
+            mask = 0
+            if row[0] == ord('#'): mask |= 1
+            if row[1] == ord('#'): mask |= 2
+            if row[2] == ord('#'): mask |= 4
+            if row[3] == ord('#'): mask |= 8
+
+            allowed = allowed_by_mask[mask]
+            if allowed is None:
+                possible = False
+                break
+
+            ndp = [INF] * 16
+            for s in range(16):
+                base = dp[s]
+                if base >= INF:
+                    continue
+                mv = move[s]
+                for ns in allowed:
+                    cand = base + mv[ns]
+                    if cand < ndp[ns]:
+                        ndp[ns] = cand
+            dp = ndp
+
+        out.append(str(-1 if not possible else min(dp)))
+
+    sys.stdout.write("\n".join(out))
+
+if __name__ == "__main__":
+    solve()
+```

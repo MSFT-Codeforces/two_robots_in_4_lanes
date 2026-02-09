@@ -1,0 +1,197 @@
+## Problem: osu!mania Autoplay Routing (Two Fingers)
+
+You are given an `n × 4` grid describing an osu!mania beatmap. Each cell is either:
+
+- `'#'` — a note exists in that column at that row  
+- `'.'` — empty
+
+Rows are given **from top to bottom**, but the game processes rows **from bottom to top** (the bottom row is processed first).
+
+You have exactly **two fingers**: left and right. At every processed row, each finger must be positioned on exactly one column (columns are `1..4`). Between two consecutive processed rows, each finger may move to another column. The **energy cost** of a move is:
+
+\[
+|L_{new}-L_{old}| + |R_{new}-R_{old}|
+\]
+
+where `L` and `R` are the current columns of the left and right finger.
+
+Fingers are distinct; they may occupy the same column unless a row requires pressing two different columns.
+
+### Clearing a row
+Let `S` be the set of columns that contain `'#'` in the currently processed row.
+
+- If `|S| = 0`: no constraint (you may choose any positions for this row).
+- If `|S| = 1`: at least one finger must be on that column.
+- If `|S| = 2`: both notes must be pressed simultaneously, so the two fingers must occupy exactly those two columns (in any assignment).
+- If `|S| ≥ 3`: it is **impossible** to clear the beatmap (only two fingers).
+
+### Initial positions
+Before processing the bottom row:
+- left finger starts at column `1`
+- right finger starts at column `4`
+
+### Task
+For each test case, output the **minimum total energy cost** needed to clear the beatmap, or `-1` if it is impossible.
+
+---
+
+## Input Format
+- The first line contains an integer `t` — the number of test cases.
+- For each test case:
+  - The first line contains an integer `n` — the number of rows.
+  - The next `n` lines each contain a string of exactly 4 characters `'.'` and `'#'`.
+
+---
+
+## Output Format
+For each test case, print a single integer: the minimum total energy cost, or `-1` if impossible.
+
+---
+
+## Constraints
+- `1 ≤ t ≤ 10^4`
+- `1 ≤ n ≤ 2⋅10^5`
+- Sum of `n` over all test cases does not exceed `2⋅10^5`
+- Each row contains between `0` and `4` occurrences of `'#'`
+
+---
+
+## Editorial (Solution)
+
+There are only 4 columns. A full finger configuration is `(L, R)` where `L, R ∈ {1,2,3,4}`.  
+Thus there are `4 × 4 = 16` possible states.
+
+We process rows in the actual gameplay order: **bottom → top** (i.e., iterate the input in reverse). Use dynamic programming:
+
+- Let `dp[s]` be the minimum total energy cost to process all rows so far and end in state `s`.
+- Encode a state by 0-based columns: `L, R ∈ {0,1,2,3}`, `s = 4*L + R`.
+
+### Transitions
+Moving from state `s=(L,R)` to `ns=(L',R')` costs:
+\[
+|L'-L| + |R'-R|
+\]
+
+For each processed row, compute which next states are **allowed** based on the note columns:
+
+- `0` notes: all 16 states allowed.
+- `1` note at column `c`: allowed states are those with `L'=c` or `R'=c`.
+- `2` notes at distinct columns `a,b`: allowed states are only `(a,b)` and `(b,a)`.
+- `≥3` notes: impossible → answer is `-1`.
+
+Then:
+\[
+dp_{next}[ns] = \min_{s} \big(dp[s] + moveCost(s, ns)\big)
+\]
+for all allowed `ns`.
+
+### Initialization
+Before the first processed row (the bottom row), the fingers start at `(1,4)` which is `(0,3)` in 0-based indexing:
+- `dp[start] = 0`, all other states are infinity.
+
+### Result
+After processing all rows, the answer is `min(dp)` (we may end in any state).  
+If any row has 3 or 4 notes, the beatmap is impossible and the answer is `-1`.
+
+### Complexity
+There are 16 states. For each row we try at most `16 × 16 = 256` transitions:
+- Time: `O(256 * n)` per test case, i.e. `O(n)` with a small constant.
+- Total time over all tests: `O(256 * sum(n))`, fits the constraints.
+- Memory: `O(16)`.
+
+---
+
+## Reference Implementation (Python)
+
+```python
+import sys
+
+INF = 10**30
+HASH = ord('#')
+
+def solve() -> None:
+    data = sys.stdin.buffer.read().split()
+    t = int(data[0])
+    p = 1
+
+    # Precompute movement costs between all 16 states.
+    # State s corresponds to (l, r) with 0-based columns, s = 4*l + r.
+    move = [[0] * 16 for _ in range(16)]
+    for s in range(16):
+        l1, r1 = divmod(s, 4)
+        for ns in range(16):
+            l2, r2 = divmod(ns, 4)
+            move[s][ns] = abs(l1 - l2) + abs(r1 - r2)
+
+    # Precompute allowed next states for each mask of notes in a row.
+    # mask bit j is 1 if column j (0..3) has '#'.
+    allowed_by_mask = [None] * 16
+    for mask in range(16):
+        k = mask.bit_count()
+        if k == 0:
+            allowed_by_mask[mask] = list(range(16))
+        elif k == 1:
+            # index of the only set bit
+            c = mask.bit_length() - 1
+            lst = []
+            for s in range(16):
+                l, r = divmod(s, 4)
+                if l == c or r == c:
+                    lst.append(s)
+            allowed_by_mask[mask] = lst
+        elif k == 2:
+            # extract the two set bit indices a, b
+            b1 = mask & -mask
+            rest = mask ^ b1
+            b2 = rest & -rest
+            a = b1.bit_length() - 1
+            b = b2.bit_length() - 1
+            allowed_by_mask[mask] = [a * 4 + b, b * 4 + a]
+        else:
+            allowed_by_mask[mask] = None  # impossible
+
+    out_lines = []
+
+    for _ in range(t):
+        n = int(data[p]); p += 1
+        rows = data[p:p+n]  # each is a 4-byte token like b".#.."
+        p += n
+
+        dp = [INF] * 16
+        start_state = 0 * 4 + 3  # (1,4) -> (0,3)
+        dp[start_state] = 0
+
+        possible = True
+
+        # Process in gameplay order: bottom -> top
+        for row in reversed(rows):
+            # Build mask of notes in this row
+            mask = 0
+            if row[0] == HASH: mask |= 1
+            if row[1] == HASH: mask |= 2
+            if row[2] == HASH: mask |= 4
+            if row[3] == HASH: mask |= 8
+
+            allowed = allowed_by_mask[mask]
+            if allowed is None:
+                possible = False
+                break
+
+            nextdp = [INF] * 16
+            for s, base in enumerate(dp):
+                if base == INF:
+                    continue
+                mv = move[s]
+                for ns in allowed:
+                    val = base + mv[ns]
+                    if val < nextdp[ns]:
+                        nextdp[ns] = val
+            dp = nextdp
+
+        out_lines.append(str(-1 if not possible else min(dp)))
+
+    sys.stdout.write("\n".join(out_lines))
+
+if __name__ == "__main__":
+    solve()
+```

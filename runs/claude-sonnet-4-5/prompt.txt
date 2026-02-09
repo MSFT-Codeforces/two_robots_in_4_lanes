@@ -1,0 +1,84 @@
+
+You are an expert competitive programmer. 
+You will be provided with a problem statement, first analyze the problem, then provide your solution in Python. 
+Consider edge cases, time complexity, and space complexity. 
+Make sure your solution handles all constraints mentioned in the problem. 
+Your final solution should be a complete, compilable Python program in a python codeblock.
+
+**Two Robots in 4 Lanes**
+
+In an underground archive there are $4$ parallel corridors (lanes) numbered $1$ to $4$. The archive has $n$ tiers stacked vertically. Each tier is described by a string of length $4$ consisting of characters `'#'` and `'.'`:
+
+- `'#'` means there is an artifact to handle in that corridor on this tier.
+- `'.'` means nothing to do there.
+
+The $n$ strings are given from **top tier to bottom tier**, but the handling is performed from **bottom tier to top tier** (i.e., the last input row is processed first).
+
+You control two robots:
+
+- Robot $A$ (left robot)
+- Robot $B$ (right robot)
+
+Before processing begins (before the bottom tier), robot $A$ is in corridor $1$, and robot $B$ is in corridor $4$.
+
+### Movement Cost
+On each processed tier, each robot must stand in exactly one corridor from $1$ to $4$. Between two consecutive processed tiers, robots may move.  
+If robot $A$ moves from $A_{\text{old}}$ to $A_{\text{new}}$ and robot $B$ moves from $B_{\text{old}}$ to $B_{\text{new}}$, the energy cost is:
+$$
+|A_{\text{new}}-A_{\text{old}}| + |B_{\text{new}}-B_{\text{old}}|
+$$
+
+### Constraints per Tier
+Let $S$ be the set of corridors that contain `'#'` in the currently processed tier.
+
+- If $|S| = 0$: no constraint (robots may stand anywhere).
+- If $|S| = 1$: at least one robot must stand on that corridor.
+- If $|S| = 2$: both artifacts must be handled simultaneously, so the robots must occupy **exactly those two corridors** (in any assignment).
+- If $|S| \ge 3$: it is impossible to handle this tier with only two robots.
+
+Robots are distinct. They may share the same corridor unless $|S| = 2$ (which forces two different corridors).
+
+For each test case, find the minimum total energy needed to process all tiers, or output $-1$ if impossible.
+
+**Input Format:-**
+
+The first line contains an integer $t$ — the number of test cases.  
+For each test case:
+- The first line contains an integer $n$ — the number of tiers.
+- The next $n$ lines contain strings of length $4$ (top to bottom), consisting only of `'.'` and `'#'`.
+
+**Output Format:-**
+
+For each test case, output a single integer — the minimum total energy required, or $-1$ if it is impossible.
+
+**Constraints:-**
+
+- $1 \le t \le 10^4$
+- $1 \le n \le 2 \cdot 10^5$
+- The sum of $n$ over all test cases does not exceed $2 \cdot 10^5$
+
+**Examples:-**
+ - **Input:**
+```
+4
+1
+#...
+2
+.#..
+..#.
+2
+##..
+....
+3
+.#..
+###.
+..#.
+```
+
+ - **Output:**
+```
+0
+3
+2
+-1
+```

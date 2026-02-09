@@ -1,0 +1,197 @@
+import sys
+
+
+def build_movement_costs() -> list:
+    """
+    Build a 16x16 matrix of movement costs between robot placement states.
+
+    State encoding uses 0-based corridors:
+        state = 4 * robot_a_corridor + robot_b_corridor
+
+    Returns:
+        list: movement_costs[from_state][to_state] equals the energy needed to
+        move from from_state to to_state in one step.
+    """
+    movement_costs = [[0] * 16 for _ in range(16)]
+    for from_state in range(16):
+        from_a, from_b = divmod(from_state, 4)
+        for to_state in range(16):
+            to_a, to_b = divmod(to_state, 4)
+            movement_costs[from_state][to_state] = (
+                abs(from_a - to_a) + abs(from_b - to_b)
+            )
+    return movement_costs
+
+
+def build_allowed_states_by_mask() -> list:
+    """
+    Precompute allowed robot placement states for each 4-bit row mask.
+
+    Mask bit j is 1 if corridor j (0-based) contains '#'.
+
+    Returns:
+        list: allowed_states_by_mask[mask] is a list of allowed state integers
+        in [0, 15], or None if the mask is impossible (3 or 4 hashes).
+    """
+    allowed_states_by_mask = [None] * 16
+
+    popcount_by_mask = [0] * 16
+    for mask_value in range(16):
+        popcount_by_mask[mask_value] = (
+            (mask_value & 1)
+            + ((mask_value >> 1) & 1)
+            + ((mask_value >> 2) & 1)
+            + ((mask_value >> 3) & 1)
+        )
+
+    for mask_value in range(16):
+        required_count = popcount_by_mask[mask_value]
+
+        if required_count == 0:
+            allowed_states_by_mask[mask_value] = list(range(16))
+            continue
+
+        if required_count == 1:
+            required_corridor = 0
+            for corridor_index in range(4):
+                if mask_value == (1 << corridor_index):
+                    required_corridor = corridor_index
+                    break
+
+            allowed_states = []
+            for state_value in range(16):
+                robot_a, robot_b = divmod(state_value, 4)
+                if robot_a == required_corridor or robot_b == required_corridor:
+                    allowed_states.append(state_value)
+
+            allowed_states_by_mask[mask_value] = allowed_states
+            continue
+
+        if required_count == 2:
+            corridors = []
+            for corridor_index in range(4):
+                if mask_value & (1 << corridor_index):
+                    corridors.append(corridor_index)
+
+            first_corridor, second_corridor = corridors
+            allowed_states_by_mask[mask_value] = [
+                first_corridor * 4 + second_corridor,
+                second_corridor * 4 + first_corridor,
+            ]
+            continue
+
+        allowed_states_by_mask[mask_value] = None
+
+    return allowed_states_by_mask
+
+
+def encode_row_mask(row_bytes: bytes) -> int:
+    """
+    Encode a 4-character row into a 4-bit mask of required corridors.
+
+    Args:
+        row_bytes: bytes of length 4 containing '.' and '#'.
+
+    Returns:
+        int: mask in [0, 15].
+    """
+    hash_byte = ord("#")
+    mask_value = 0
+    if row_bytes[0] == hash_byte:
+        mask_value |= 1
+    if row_bytes[1] == hash_byte:
+        mask_value |= 2
+    if row_bytes[2] == hash_byte:
+        mask_value |= 4
+    if row_bytes[3] == hash_byte:
+        mask_value |= 8
+    return mask_value
+
+
+def compute_min_energy(
+    tier_rows: list,
+    movement_costs: list,
+    allowed_states_by_mask: list,
+    infinity_cost: int,
+) -> int:
+    """
+    Compute minimum energy for one test case using DP over 16 states.
+
+    Args:
+        tier_rows: list of tier rows (bytes), given top to bottom.
+        movement_costs: 16x16 movement cost matrix.
+        allowed_states_by_mask: allowed states list per mask, or None if
+            impossible.
+        infinity_cost: a large sentinel for unreachable states.
+
+    Returns:
+        int: minimum total energy, or -1 if impossible.
+    """
+    dp = [infinity_cost] * 16
+
+    start_robot_a = 0
+    start_robot_b = 3
+    start_state = start_robot_a * 4 + start_robot_b
+    dp[start_state] = 0
+
+    for row_bytes in reversed(tier_rows):
+        mask_value = encode_row_mask(row_bytes)
+        allowed_states = allowed_states_by_mask[mask_value]
+        if allowed_states is None:
+            return -1
+
+        next_dp = [infinity_cost] * 16
+        for from_state in range(16):
+            base_cost = dp[from_state]
+            if base_cost >= infinity_cost:
+                continue
+
+            movement_row = movement_costs[from_state]
+            for to_state in allowed_states:
+                candidate_cost = base_cost + movement_row[to_state]
+                if candidate_cost < next_dp[to_state]:
+                    next_dp[to_state] = candidate_cost
+
+        dp = next_dp
+
+    return min(dp)
+
+
+def main() -> None:
+    """
+    Read input, solve all test cases, and print answers.
+    """
+    input_stream = sys.stdin.buffer
+    test_count_line = input_stream.readline()
+    test_count = int(test_count_line)
+
+    infinity_cost = 10 ** 30
+    movement_costs = build_movement_costs()
+    allowed_states_by_mask = build_allowed_states_by_mask()
+
+    output_lines = []
+
+    for test_index in range(test_count):
+        tier_count_line = input_stream.readline()
+        while tier_count_line == b"\n":
+            tier_count_line = input_stream.readline()
+        tier_count = int(tier_count_line)
+
+        tier_rows = []
+        for _ in range(tier_count):
+            row_bytes = input_stream.readline().strip()
+            tier_rows.append(row_bytes)
+
+        answer = compute_min_energy(
+            tier_rows=tier_rows,
+            movement_costs=movement_costs,
+            allowed_states_by_mask=allowed_states_by_mask,
+            infinity_cost=infinity_cost,
+        )
+        output_lines.append(str(answer))
+
+    sys.stdout.write("\n".join(output_lines))
+
+
+if __name__ == "__main__":
+    main()

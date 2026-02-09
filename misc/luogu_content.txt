@@ -1,0 +1,13 @@
+Problem Credits: cry
+
+Analysis: cry
+
+**Solution**
+
+Implement the statement. Iterate from n−1 to 0 and use the .find() method in std::string in C++ (or .index() in python) to find the '#' character.
+
+**Code (Python) (chromate00)**
+
+```cpp
+#include<bits/stdc++.h>using namespace std;using ll=long long;using i128=__int128;using ull=unsigned long long;using ld=long double;using pii=pair<int,int>;using pll=pair<ll,ll>;clock_t a;const int M=998244353;const ll inf=1e17;const ld eps=1e-10;void oT(char c='.'){cout<<c<<"Time:"<<double(clock()-a)<<'\n';}struct Solution{		int n;vector<string>R;	void Init()	{		cin>>n;R.resize(n);for(auto&k:R)cin>>k;		for(int i=n-1;i>=0;i--)		{			for(int j=0;j<4;j++)if(R[i][j]=='#')cout<<j+1<<" \n"[i==0];		}	}	void Solve()	{ 	}};void precal(){}signed main() {    ios::sync_with_stdio(0);cin.tie(0);precal();    int t=1;cin>>t;while(t--){Solution sol;sol.Init();sol.Solve();}}
+```

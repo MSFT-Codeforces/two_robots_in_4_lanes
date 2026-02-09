@@ -1,0 +1,15 @@
+{
+  "original": "https://www.codeforces.com/problemset/problem/2009/B",
+  "title": "Two Robots in 4 Lanes",
+  "tags": [
+    "Dynamic Programming",
+    "Graph Algorithms",
+    "Heaps and Priority Queues",
+    "Algorithm Complexity and Big O Notation"
+  ],
+  "model_breaking": false,
+  "time": 4,
+  "space": 32,
+  "new_colab_link": "https://colab.research.google.com/drive/1LtB2DLF7wtpfZjPeo4YMYpCuLMq58nCS",
+  "github_link": "https://github.com/MSFT-Codeforces/two_robots_in_4_lanes"
+}

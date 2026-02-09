@@ -1,0 +1,198 @@
+**[section_01]**
+Interpreting the grid and the robots’ obligations
+**[atomic_01_01]**
+Each test case describes an archive with exactly $4$ parallel corridors (lanes) indexed from $1$ to $4$, and $n$ tiers (rows). Each tier is given as a string of length $4$ over `'.'` and `'#'`, where `'#'` marks an artifact that must be handled in that corridor on that tier, and `'.'` marks an empty corridor.
+
+**[atomic_01_02]**
+The input order and the processing order are reversed. The $n$ strings are provided from the top tier to the bottom tier, but the nightly inspection processes tiers from the bottom tier upward. If the input is $r_1, r_2, \dots, r_n$ (top to bottom), then the robots act on tiers in order $r_n, r_{n-1}, \dots, r_1$.
+
+**[atomic_01_03]**
+There are two distinct robots, $A$ and $B$. On every processed tier, each robot must stand in exactly one corridor in $\{1,2,3,4\}$. The robots may occupy the same corridor unless the tier’s artifact pattern forces them into two distinct corridors.
+
+**[atomic_01_04]**
+Between two consecutive processed tiers, each robot may move to a different corridor. If robot $A$ moves from $A_{\text{old}}$ to $A_{\text{new}}$ and robot $B$ moves from $B_{\text{old}}$ to $B_{\text{new}}$, the energy cost added is:
+$$
+|A_{\text{new}}-A_{\text{old}}| + |B_{\text{new}}-B_{\text{old}}|.
+$$
+The total energy is the sum of these costs over the entire bottom-to-top processing sequence.
+
+**[atomic_01_05]**
+For a processed tier, let $S$ be the set of corridors containing `'#'`. The tier constraint depends on $|S|$:
+- If $|S|=0$, there is no constraint on where robots stand.
+- If $|S|=1$ and $S=\{c\}$, at least one robot must stand on corridor $c$.
+- If $|S|=2$ and $S=\{a,b\}$, the robots must occupy exactly corridors $a$ and $b$ (either assignment), meaning they must be in two different corridors on that tier.
+- If $|S|\ge 3$, the tier cannot be handled by only two robots, so the whole test case is impossible.
+
+**[atomic_01_06]**
+Initial positions are fixed before the bottom tier is processed: robot $A$ starts in corridor $1$ and robot $B$ starts in corridor $4$. After all tiers are processed, there is no required final placement; only the minimum total energy matters.
+
+---
+
+**[section_02]**
+Constructing edge cases and sanity checks
+**[atomic_02_01]**
+The smallest case is $n=1$. Even with one tier, the robots still transition from the initial placement $(A,B)=(1,4)$ into some placement on that single processed tier, and that transition contributes energy by the same movement formula. Therefore, the answer can be $0$ (if an allowed placement matches $(1,4)$) or positive (if meeting the tier constraint requires moving).
+
+**[atomic_02_02]**
+Any tier with $3$ or $4$ occurrences of `'#'` must force output $-1$. This is an immediate impossibility condition that should be tested explicitly, including cases where such a tier appears in the middle of the input (to ensure order reversal is not mishandled).
+
+**[atomic_02_03]**
+Tiers with exactly two `'#'` are the strictest feasible tiers. They force the robots into two specific distinct corridors, but allow either assignment (robot swap). Tests should include adjacent strict tiers that require large moves and/or swapping to verify that distinctness of robots is handled correctly.
+
+**[atomic_02_04]**
+Tiers with exactly one `'#'` allow flexibility: either robot may cover the required corridor. Sequences of such tiers can create situations where greedily choosing the closest robot locally is not obviously correct, so they are useful for validating global minimization.
+
+**[atomic_02_05]**
+All-`.` tiers impose no placement constraint. They are still relevant because moving during these tiers may reduce later movement cost. Edge tests should include long stretches of empty tiers to ensure the implementation does not implicitly “freeze” robots when there is no requirement.
+
+**[atomic_02_06]**
+Order reversal should be stress-tested. A good sanity test is to craft two tiers where processing bottom-to-top yields a different optimal energy than processing top-to-bottom, ensuring the implementation truly processes the last input row first.
+
+---
+
+**[section_03]**
+Implementing brute force trajectory enumeration
+**[atomic_03_01]**
+A naive solution is to enumerate every possible placement of both robots on every processed tier, producing a full trajectory:
+$$
+(A_1,B_1),(A_2,B_2),\dots,(A_n,B_n),
+$$
+and then compute the total energy for each trajectory, taking the minimum among those that satisfy all tier constraints.
+
+**[atomic_03_02]**
+On any tier, robot $A$ has $4$ choices and robot $B$ has $4$ choices, so there are up to $16$ placements per tier. If many tiers are unconstrained (all `'.'`), the branching factor stays near $16$ for most depths.
+
+**[atomic_03_03]**
+Energy calculation requires tracking the previous placement to add:
+$$
+|A_i-A_{i-1}| + |B_i-B_{i-1}|.
+$$
+Additionally, the move from the initial placement $(1,4)$ into the first processed tier placement also contributes energy in the same way.
+
+**[atomic_03_04]**
+This brute force can prune branches early when a chosen placement violates the current tier’s constraint, but pruning is weak when tiers are empty or have a single `'#'`, which often leave many placements feasible.
+
+**[atomic_03_05]**
+The worst-case time complexity is exponential, $O(16^n)$, with recursion depth $n$ and potentially exponential memory if many partial trajectories are stored. This is impossible to run for $n$ up to $2\cdot 10^5$, so a fundamentally different approach is required.
+
+---
+
+**[section_04]**
+Modeling the process as a layered shortest-path graph
+**[atomic_04_01]**
+To avoid enumerating complete trajectories, the problem can be viewed as finding a minimum-cost path in a graph with $n$ layers. Each layer corresponds to one processed tier, and each node in a layer corresponds to a placement $(A,B)$ of the robots on that tier.
+
+**[atomic_04_02]**
+There are at most $16$ nodes per layer. For every consecutive pair of layers $i \to i+1$, add directed edges from every placement $(A,B)$ in layer $i$ to every placement $(A',B')$ in layer $i+1$ with weight:
+$$
+|A'-A| + |B'-B|.
+$$
+
+**[atomic_04_03]**
+Tier constraints can be enforced by removing disallowed nodes from each layer (or by never relaxing edges into disallowed nodes). A separate source node represents the initial placement $(1,4)$, with edges into all allowed nodes of the first processed tier weighted by the movement cost from $(1,4)$.
+
+**[atomic_04_04]**
+A generic shortest-path algorithm (such as Dijkstra) can compute the minimum distance to every node in the final layer. Since there is no required final placement, the answer is the minimum distance among nodes in the last layer.
+
+**[atomic_04_05]**
+This reduces the problem to polynomial time. With $V \approx 16n$ nodes and $E \approx 256(n-1)$ edges, Dijkstra runs in:
+$$
+O(E\log V)=O(256n\log(16n)).
+$$
+Space is at least $O(V)$, and implementations may incur extra overhead for managing a priority queue and layered structures.
+
+**[atomic_04_06]**
+Although feasible in theory, the $\log$ factor and priority queue overhead are unnecessary because the graph is a simple chain of layers. This motivates a tighter dynamic programming formulation that removes the priority queue and uses only constant state per tier, yielding strictly better asymptotic time.
+
+---
+
+**[section_05]**
+Deriving a constant-state dynamic programming recurrence
+**[atomic_05_01]**
+Since there are only $4$ corridors, a complete robot configuration on a tier is fully described by a pair $(A,B)$ with $A,B\in\{1,2,3,4\}$. That yields exactly $16$ possible states, which is small enough to track explicitly.
+
+**[atomic_05_02]**
+Define a DP array where $dp[A,B]$ is the minimum energy to process tiers from the bottom up to the current processed tier, ending with robots in corridors $(A,B)$ on the current tier. The start condition is:
+- $dp[1,4]=0$
+- all other $dp[A,B]=\infty$
+
+**[atomic_05_03]**
+For each processed tier, compute the allowed set of states based on $S$ (the set of `'#'` corridors):
+- $|S|=0$: all $16$ states are allowed
+- $|S|=1$, $S=\{c\}$: states with $A=c$ or $B=c$
+- $|S|=2$, $S=\{a,b\}$: exactly $(A,B)=(a,b)$ and $(b,a)$
+- $|S|\ge 3$: impossible tier, answer is $-1$
+
+**[atomic_05_04]**
+The transition to the next tier is:
+$$
+dp_{\text{next}}[A',B'] =
+\min_{A,B}\Bigl(dp[A,B] + |A'-A| + |B'-B|\Bigr),
+$$
+computed only for allowed next states $(A',B')$ of the current tier. This captures every possible way to move from the previous tier’s placement to the current tier’s placement.
+
+**[atomic_05_05]**
+The DP must iterate tiers in the true processing order: bottom to top, which means iterating over the input rows in reverse. This is a correctness requirement, not merely a performance detail.
+
+**[atomic_05_06]**
+This DP is strictly more efficient than the layered shortest path approach because it eliminates the $\log$ factor and avoids managing a priority queue. Per tier, it performs at most $16 \times 16 = 256$ relaxations, so total time is $O(256n)=O(n)$ and rolling-array space is $O(16)=O(1)$.
+
+**[atomic_05_07]**
+After all tiers are processed, there is no restriction on the final state, so the final answer is:
+$$
+\min_{A,B} dp[A,B],
+$$
+unless an impossible tier was found, in which case the answer is $-1$.
+
+---
+
+**[section_06]**
+Checking invariants and ensuring correctness of the DP
+**[atomic_06_01]**
+A central invariant is: after processing the first $k$ tiers (counted from the bottom), $dp[A,B]$ equals the minimum energy among all valid placements for those $k$ tiers that end with robots in corridors $(A,B)$ on the $k$-th processed tier. This invariant precisely matches what the DP claims to represent.
+
+**[atomic_06_02]**
+Initialization satisfies the invariant for $k=0$ because no tiers have been processed yet, the robots are exactly at $(1,4)$, and the energy is $0$. All other placements are not yet realized, so assigning them $\infty$ correctly represents unreachable states.
+
+**[atomic_06_03]**
+The transition preserves the invariant: any valid way to end at $(A',B')$ on the new tier must come from some previous state $(A,B)$ on the previous tier, and the added energy is exactly $|A'-A|+|B'-B|$. Taking a minimum over all predecessors ensures the best such path is selected.
+
+**[atomic_06_04]**
+Filtering by allowed states ensures per-tier constraints are met exactly. In particular, for $|S|=2$, allowing only the two states $(a,b)$ and $(b,a)$ enforces that both required corridors are covered simultaneously and that robots cannot share a corridor on that tier.
+
+**[atomic_06_05]**
+The impossibility rule $|S|\ge 3$ is globally decisive: no matter how robots moved previously, two robots cannot cover three required corridors on the same tier. Therefore, detecting such a tier guarantees that the correct output is $-1$.
+
+**[atomic_06_06]**
+The final minimization over states is valid because the problem does not constrain the ending placement. Any end state is acceptable if it arises from a valid sequence of placements satisfying all tiers, so the minimum over $dp$ yields the optimal total energy.
+
+---
+
+**[section_07]**
+Strengthening the final implementation with precomputation and input handling
+**[atomic_07_01]**
+Because each row has length $4$, it can be represented as a $4$-bit mask (bit $j$ set if corridor $j$ contains `'#'`). There are only $16$ possible masks, so it is beneficial to precompute, for each mask, the list of allowed robot states. This removes repeated per-tier logic and reduces constant factors.
+
+**[atomic_07_02]**
+Similarly, precomputing movement costs between any two of the $16$ states avoids recomputing absolute differences inside the innermost loops. This matters because the total number of tier transitions across all test cases can be as large as $2\cdot 10^5$, and each tier performs up to $256$ relaxations.
+
+**[atomic_07_03]**
+Input size can be large and $t$ can be up to $10^4$, so using `sys.stdin.buffer` is appropriate for performance. Processing rows as bytes also makes it straightforward to test characters against `'#'` without expensive conversions.
+
+**[atomic_07_04]**
+Rolling arrays should be used to keep memory at $O(16)$. For each tier, compute `ndp` from `dp`, then replace `dp = ndp`. This prevents accidental $O(16n)$ memory usage and aligns with the DP definition, which only depends on the previous tier.
+
+**[atomic_07_05]**
+Careful handling of the reverse order is essential. The simplest reliable procedure is: read all $n$ rows for a test case, then iterate them in reverse for the DP. This directly matches the specification “last input row is processed first” and prevents subtle off-by-one mistakes.
+
+**[atomic_07_06]**
+A minimal illustrative snippet of the kind of precomputation used (not full solution code) is:
+```python
+move = [[0] * 16 for _ in range(16)]
+for s in range(16):
+    a1, b1 = divmod(s, 4)
+    for ns in range(16):
+        a2, b2 = divmod(ns, 4)
+        move[s][ns] = abs(a1 - a2) + abs(b1 - b2)
+```
+This keeps the inner DP update loops focused on min-plus updates, which is crucial for meeting the time limits.
