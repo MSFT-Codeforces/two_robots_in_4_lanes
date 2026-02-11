@@ -1,5 +1,3 @@
-**Two Robots in 4 Lanes**
-
 Time Limit: **4 seconds**
 
 Memory Limit: **32 MB**
@@ -16,13 +14,14 @@ You control two robots:
 - Robot $A$ (left robot)
 - Robot $B$ (right robot)
 
-Before processing begins (before the bottom tier), robot $A$ is in corridor $1$, and robot $B$ is in corridor $4$.
+Before processing begins (before the bottom tier), robot $A$ is in corridor $1$, and robot $B$ is in corridor $4$. The robots may move to satisfy the bottom tier's requirement, and that initial move cost is included.
+
 
 ### Movement Cost
-On each processed tier, each robot must stand in exactly one corridor from $1$ to $4$. Between two consecutive processed tiers, robots may move.  
-If robot $A$ moves from $A_{\text{old}}$ to $A_{\text{new}}$ and robot $B$ moves from $B_{\text{old}}$ to $B_{\text{new}}$, the energy cost is:
+On each processed tier, each robot must stand in exactly one corridor from $1$ to $4$. Robots may move from the initial position to the first processed tier, and between any two consecutive processed tiers.  
+If robot $A$ moves from $A_{old}$ to $A_{new}$ and robot $B$ moves from $B_{old}$ to $B_{new}$, the energy cost is:
 $$
-|A_{\text{new}}-A_{\text{old}}| + |B_{\text{new}}-B_{\text{old}}|
+|A_{new}-A_{old}| + |B_{new}-B_{old}|
 $$
 
 ### Constraints per Tier
@@ -33,7 +32,8 @@ Let $S$ be the set of corridors that contain `'#'` in the currently processed ti
 - If $|S| = 2$: both artifacts must be handled simultaneously, so the robots must occupy **exactly those two corridors** (in any assignment).
 - If $|S| \ge 3$: it is impossible to handle this tier with only two robots.
 
-Robots are distinct. They may share the same corridor unless $|S| = 2$ (which forces two different corridors).
+Robots are distinct. They may share the same corridor unless $|S| = 2$ (which forces two different corridors). There is no ordering constraint such as $A \le B$; robots may cross or swap corridors between tiers.
+
 
 For each test case, find the minimum total energy needed to process all tiers, or output $-1$ if impossible.
 
@@ -114,7 +114,14 @@ For each test case, output a single integer — the minimum total energy require
 
 - In the first example, test case 5 is processed bottom-to-top: first "..##" forces corridors $\{3,4\}$, best reached as $(3,4)$ with cost $|3-1|+|4-4|=2$. Then ".#.." requires at least one robot in corridor $2$, best done by moving to $(2,4)$ with additional cost $|2-3|+|4-4|=1$. The top tier "...." has no constraint, so no more movement is needed; total energy $2+1=3$.
 
-- In the first example, the single test case of the second sample is processed bottom-to-top (from ".#.." up to "..#."). One optimal sequence of robot positions is:
+- In the first example, the single test case of the second sample is processed bottom-to-top. The bottom-to-top tier order is:
+  1. ".#.." (bottom row)
+  2. "...#"
+  3. "#..."
+  4. "...#"
+  5. "#..."
+  6. "..#." (top row)
+  One optimal sequence of robot positions is:
   1. ".#.." (need corridor $2$): $(1,4)\rightarrow(2,4)$, cost $1$.
   2. "...#" (need corridor $4$): stay $(2,4)$, cost $0$.
   3. "#..." (need corridor $1$): $(2,4)\rightarrow(1,4)$, cost $1$.
