@@ -24,18 +24,44 @@ Initial positions are fixed before the bottom tier is processed: robot $A$ start
 ---
 
 **[section_02]**
-Explaining the provided sample test cases
+Explaining the provided sample test cases and edge cases for validation
 **[atomic_02_01]**
-Sample 1, test case 1: $n=1$, tier is "....". There is no constraint, so staying at $(A,B)=(1,4)$ costs $0$, matching output $0$.
+Analyzing test case 4: $n=2$ tiers, robots start at $(A,B)=(1,4)$.
+
+Tiers (top-to-bottom): ".##." and "#..#"
+Process bottom-to-top:
+
+**Tier 2**: "#..#" → artifacts at $\{1,4\}$, $|S|=2$ forces exact assignment to corridors $\{1,4\}$. Robots already at $(1,4)$ → cost $= 0$
+
+**Tier 1**: ".##." → artifacts at $\{2,3\}$, $|S|=2$ forces exact assignment to corridors $\{2,3\}$
+- Move $(1,4) \to (2,3)$: cost $= |2-1| + |3-4| = 2$
+- Move $(1,4) \to (3,2)$: cost $= |3-1| + |2-4| = 4$
+
+Minimum cost $= 2$. Total energy $= 0 + 2 = 2$.
 **[atomic_02_02]**
-Sample 1, test case 2: $n=1$, tier is "####" so $|S|=4 \ge 3$. It is impossible to cover all artifacts with two robots, so the answer is $-1$.
+Analyzing second example: $n=6$ tiers, robots start at $(1,4)$.
+
+Process bottom-to-top through all 6 tiers:
+
+**Tier 6**: ".#.." → $|S|=1$, need corridor $2$ → move to $(2,4)$, cost $= 1$
+**Tier 5**: "...#" → $|S|=1$, need corridor $4$ → robot B already there, stay $(2,4)$, cost $= 0$
+**Tier 4**: "#..." → $|S|=1$, need corridor $1$ → move to $(1,4)$, cost $= 1$
+**Tier 3**: "...#" → $|S|=1$, need corridor $4$ → robot B already there, stay $(1,4)$, cost $= 0$
+**Tier 2**: "#..." → $|S|=1$, need corridor $1$ → robot A already there, stay $(1,4)$, cost $= 0$
+**Tier 1**: "..#." → $|S|=1$, need corridor $3$ → move to $(1,3)$, cost $= 1$
+
+Total energy $= 1 + 0 + 1 + 0 + 0 + 1 = 3$.
 **[atomic_02_03]**
-Sample 1, test case 3: input rows are "#..." (top) and "...." (bottom). Processing bottom-to-top means "...." first (no constraint), then "#..." which requires corridor $1$. The start $(1,4)$ already satisfies the last tier, so total cost is $0$.
+Sample 1, test case 1: $n=1$, tier is "....". There is no constraint, so staying at $(A,B)=(1,4)$ costs $0$, matching output $0$.
 **[atomic_02_04]**
-Sample 1, test case 4: bottom-to-top order is "#..#" then ".##.". The first tier requires corridors $\{1,4\}$, satisfied by the start $(1,4)$ at cost $0$. The next tier requires $\{2,3\}$, and moving to $(2,3)$ costs $|2-1|+|3-4|=2$, so the total is $2$.
+Sample 1, test case 2: $n=1$, tier is "####" so $|S|=4 \ge 3$. It is impossible to cover all artifacts with two robots, so the answer is $-1$.
 **[atomic_02_05]**
-Sample 1, test case 5: bottom-to-top order is "..##", ".#..", "....". From start $(1,4)$, the "..##" tier forces $\{3,4\}$, best reached by $(3,4)$ with cost $2$. Then ".#.." requires corridor $2$, so moving to $(2,4)$ costs $1$ more. The final "...." has no constraint, so total is $3$.
+Sample 1, test case 3: input rows are "#..." (top) and "...." (bottom). Processing bottom-to-top means "...." first (no constraint), then "#..." which requires corridor $1$. The start $(1,4)$ already satisfies the last tier, so total cost is $0$.
 **[atomic_02_06]**
+Sample 1, test case 4: bottom-to-top order is "#..#" then ".##.". The first tier requires corridors $\{1,4\}$, satisfied by the start $(1,4)$ at cost $0$. The next tier requires $\{2,3\}$, and moving to $(2,3)$ costs $|2-1|+|3-4|=2$, so the total is $2$.
+**[atomic_02_07]**
+Sample 1, test case 5: bottom-to-top order is "..##", ".#..", "....". From start $(1,4)$, the "..##" tier forces $\{3,4\}$, best reached by $(3,4)$ with cost $2$. Then ".#.." requires corridor $2$, so moving to $(2,4)$ costs $1$ more. The final "...." has no constraint, so total is $3$.
+**[atomic_02_08]**
 Sample 2 (single test case): bottom-to-top tiers are ".#..", "...#", "#...", "...#", "#...", "..#.". One optimal sequence is $(1,4)\rightarrow(2,4)\rightarrow(2,4)\rightarrow(1,4)\rightarrow(1,4)\rightarrow(1,4)\rightarrow(1,3)$ with total energy $3$, matching the output.
 
 ---
@@ -136,9 +162,9 @@ The impossibility rule $|S|\ge 3$ is globally decisive: no matter how robots mov
 **[atomic_06_06]**
 The final minimization over states is valid because the problem does not constrain the ending placement. Any end state is acceptable if it arises from a valid sequence of placements satisfying all tiers, so the minimum over $dp$ yields the optimal total energy.
 **[atomic_06_07]**
-Corner cases considered explicitly: (1) $n=0$ — constraints give $1 \le n$, so $n=0$ is not in the input; no special handling. (2) Tiers with exactly one `'#'` — many allowed states (one robot at $c$ or both); CHAIN_05’s allowed-set logic and the DP transition over all 16 previous states already handle this; no revision. (3) Repeated empty tiers — $|S|=0$ allows all 16 states; the DP simply propagates minimum cost without constraining placement; long runs of empty tiers do not change the recurrence. (4) Robots sharing a corridor — allowed when $|S|\le 1$; CHAIN_01 and the problem statement permit this; the 16-state space includes pairs with $A=B$, so no revision. (5) First processed tier — the initial move from $(1,4)$ to the bottom tier is included because we initialize $dp$ only at $(1,4)$ and the first DP step relaxes from that state; CHAIN_03 and CHAIN_04 already account for this.
+Corner cases considered explicitly: (1) $n=0$ — constraints give $1 \le n$, so $n=0$ is not in the input; no special handling. (2) Tiers with exactly one `'#'` — many allowed states (one robot at $c$ or both); In previously allowed-set logic and the DP transition over all 16 previous states already handle this; no revision. (3) Repeated empty tiers — $|S|=0$ allows all 16 states; the DP simply propagates minimum cost without constraining placement; long runs of empty tiers do not change the recurrence. (4) Robots sharing a corridor — allowed when $|S|\le 1$; In previously and the problem statement permit this; the 16-state space includes pairs with $A=B$, so no revision. (5) First processed tier — the initial move from $(1,4)$ to the bottom tier is included because we initialize $dp$ only at $(1,4)$ and the first DP step relaxes from that state;In previously already account for this.
 **[atomic_06_08]**
-Impact on design and revisions: None of these corner cases necessitate revising CHAIN_01–CHAIN_05. The data structure (16-state DP, allowed states per mask) and complexity $O(n)$ with $O(1)$ space already cover $n=1$, single-`'#'` tiers, and long empty sequences. The only requirement is that the implementation (CHAIN_07) iterates tiers in reverse and applies the precomputed allowed states and movement costs consistently; no extra branches for “empty tier” or “single artifact” are needed beyond the mask-based allowed set.
+Impact on design and revisions: None of these corner cases necessitate revising in previously. The data structure (16-state DP, allowed states per mask) and complexity $O(n)$ with $O(1)$ space already cover $n=1$, single-`'#'` tiers, and long empty sequences. The only requirement is that the implementation further iterates tiers in reverse and applies the precomputed allowed states and movement costs consistently; no extra branches for “empty tier” or “single artifact” are needed beyond the mask-based allowed set.
 
 ---
 
