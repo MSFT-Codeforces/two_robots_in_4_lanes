@@ -182,12 +182,9 @@ Rolling arrays should be used to keep memory at $O(16)$. For each tier, compute 
 Careful handling of the reverse order is essential. The simplest reliable procedure is: read all $n$ rows for a test case, then iterate them in reverse for the DP. This directly matches the specification “last input row is processed first” and prevents subtle off-by-one mistakes.
 **[atomic_07_06]**
 A minimal illustrative snippet of the kind of precomputation used (not full solution code) is:
-```python
-move = [[0] * 16 for _ in range(16)]
-for s in range(16):
-    a1, b1 = divmod(s, 4)
-    for ns in range(16):
-        a2, b2 = divmod(ns, 4)
-        move[s][ns] = abs(a1 - a2) + abs(b1 - b2)
-```
+$$\text{For each state } s \in \{0,\ldots,15\}, \text{ we write } s = 4a_1 + b_1 \text{ and for each } s' = 4a_2 + b_2, \text{ precompute}$$
+
+$$\text{move}[s][s'] = |a_1 - a_2| + |b_1 - b_2|$$
+
+$$\text{storing the Manhattan distance between every pair of grid cells so that the inner DP min-plus update loops can query transition costs in } O(1).$$
 This keeps the inner DP update loops focused on min-plus updates, which is crucial for meeting the time limits.
